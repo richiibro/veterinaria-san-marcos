@@ -32,13 +32,25 @@ const Navbar = ({ user, onLogout }) => {
               <Link className="nav-link" to="/">Inicio</Link>
             </li>
             <li className="nav-item">
-              <Link className="nav-link" to="/catalogo">Catálogo de Servicios</Link>
+              <Link className="nav-link" to="/catalogo">Catálogo y Stock</Link>
             </li>
+            
+            {/* Vistas disponibles para usuarios con sesión activa */}
             {user && (
-              <li className="nav-item">
-                <Link className="nav-link" to="/mis-citas">Gestión de Citas</Link>
-              </li>
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/mis-mascotas">Mis Mascotas</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/mis-citas">Gestión de Citas</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/fichas">Fichas Clínicas</Link>
+                </li>
+              </>
             )}
+
+            {/* Vista accesible solo para Administrador */}
             {user && user.rol === 'Administrador' && (
               <li className="nav-item">
                 <Link className="nav-link fw-bold text-warning" to="/admin">Panel Admin</Link>
@@ -48,8 +60,8 @@ const Navbar = ({ user, onLogout }) => {
 
           <div className="d-flex align-items-center">
             {user ? (
-              <div className="text-white me-3">
-                <small className="d-block me-2">Hola, <strong>{user.nombre}</strong> ({user.rol})</small>
+              <div className="text-white me-3 text-end">
+                <small className="d-block">Hola, <strong>{user.nombre}</strong> ({user.rol})</small>
                 <button className="btn btn-outline-light btn-sm mt-1" onClick={handleLogoutClick}>Cerrar Sesión</button>
               </div>
             ) : (

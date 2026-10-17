@@ -7,6 +7,8 @@ import Login from './pages/Login';
 import Catalogo from './pages/Catalogo';
 import MisCitas from './pages/MisCitas';
 import AdminUsuarios from './pages/AdminUsuarios';
+import FichaClinica from './pages/FichaClinica';
+import MisMascotas from './pages/MisMascotas';
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -34,10 +36,17 @@ function App() {
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           
           <Route 
+            path="/mis-mascotas" 
+            element={user ? <MisMascotas user={user} /> : <Navigate to="/login" />} 
+          />
+          <Route 
             path="/mis-citas" 
             element={user ? <MisCitas user={user} /> : <Navigate to="/login" />} 
           />
-          
+          <Route 
+            path="/fichas" 
+            element={user ? <FichaClinica user={user} /> : <Navigate to="/login" />} 
+          />
           <Route 
             path="/admin" 
             element={user && user.rol === 'Administrador' ? <AdminUsuarios /> : <Navigate to="/" />} 

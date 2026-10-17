@@ -67,3 +67,44 @@ export const updateEstadoCita = (id, nuevoEstado) => {
   saveData('sanmarcos_citas', actualizadas);
   return actualizadas;
 };
+
+const INITIAL_MASCOTAS = [
+  { id: 1, duenoId: 3, nombre: 'Cachupín', especie: 'Perro', raza: 'Quiltro', edad: '3 años', peso: '14 kg' },
+  { id: 2, duenoId: 3, nombre: 'Pelusa', especie: 'Gato', raza: 'Persa', edad: '2 años', peso: '4.2 kg' }
+];
+
+const INITIAL_FICHAS = [
+  {
+    id: 1,
+    mascotaId: 1,
+    mascotaNombre: 'Cachupín',
+    duenoNombre: 'Juan Pérez',
+    fecha: '2026-09-10',
+    diagnostico: 'Gastroenteritis leve por ingesta inadecuada.',
+    medicamentos: 'Amoxibay 250mg cada 12 hrs por 5 días.',
+    vacunaAplicada: 'Antirrábica',
+    vacunaVencimiento: '2026-11-15', // Próxima a vencer
+    proximoControl: '2026-10-25',
+    veterinario: 'Dr. Roberto Muñoz'
+  }
+];
+
+// CRUD Mascotas
+export const getMascotas = () => getData('sanmarcos_mascotas', INITIAL_MASCOTAS);
+export const addMascota = (nueva) => {
+  const lista = getMascotas();
+  const registro = { ...nueva, id: Date.now() };
+  lista.push(registro);
+  saveData('sanmarcos_mascotas', lista);
+  return registro;
+};
+
+// CRUD Fichas Clínicas
+export const getFichas = () => getData('sanmarcos_fichas', INITIAL_FICHAS);
+export const addFicha = (nueva) => {
+  const lista = getFichas();
+  const registro = { ...nueva, id: Date.now() };
+  lista.push(registro);
+  saveData('sanmarcos_fichas', lista);
+  return registro;
+};
