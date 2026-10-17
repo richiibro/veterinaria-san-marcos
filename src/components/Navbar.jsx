@@ -35,7 +35,7 @@ const Navbar = ({ user, onLogout }) => {
               <Link className="nav-link" to="/catalogo">Catálogo y Stock</Link>
             </li>
             
-            {/* Vistas disponibles para usuarios con sesión activa */}
+            {/* Vistas disponibles para usuarios autenticados */}
             {user && (
               <>
                 <li className="nav-item">
@@ -50,11 +50,16 @@ const Navbar = ({ user, onLogout }) => {
               </>
             )}
 
-            {/* Vista accesible solo para Administrador */}
+            {/* Vistas exclusivas para Administrador */}
             {user && user.rol === 'Administrador' && (
-              <li className="nav-item">
-                <Link className="nav-link fw-bold text-warning" to="/admin">Panel Admin</Link>
-              </li>
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link fw-bold text-warning" to="/admin">Panel Admin</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link fw-bold text-info" to="/reportes">Reportes</Link>
+                </li>
+              </>
             )}
           </ul>
 
@@ -62,7 +67,9 @@ const Navbar = ({ user, onLogout }) => {
             {user ? (
               <div className="text-white me-3 text-end">
                 <small className="d-block">Hola, <strong>{user.nombre}</strong> ({user.rol})</small>
-                <button className="btn btn-outline-light btn-sm mt-1" onClick={handleLogoutClick}>Cerrar Sesión</button>
+                <button className="btn btn-outline-light btn-sm mt-1" onClick={handleLogoutClick}>
+                  Cerrar Sesión
+                </button>
               </div>
             ) : (
               <Link className="btn btn-light text-success fw-bold" to="/login">Iniciar Sesión</Link>
