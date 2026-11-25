@@ -1,23 +1,130 @@
 // src/pages/Catalogo.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getServicios } from '../data/dataStore';
-import { getProductosApi } from '../services/api';
+import {
+  getProductosApi,
+  crearProductoApi,
+  actualizarProductoApi,
+  eliminarProductoApi
+} from '../services/api';
 
-const Catalogo = () => {
+const INITIAL_FORM = {
+  nombre: '',
+  descripcion: '',
+  categoria: '',
+  precio: '',
+  stock: '',
+  imagenUrl: ''
+};
+
+const Catalogo = ({ user }) => {
+  const isAdmin = user?.rol === 'Administrador';
+
   const [servicios, setServicios] = useState([]);
   const [medicamentos, setMedicamentos] = useState([]);
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('servicios');
+  const [loadingProductos, setLoadingProductos] = useState(false);
   const [errorBackend, setErrorBackend] = useState('');
+  const [feedback, setFeedback] = useState({ type: '', text: '' });
+
+  // Estado para crear o editar producto (solo Administrador)
+  const [form, setForm] = useState(INITIAL_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const cargarProductos = useCallback(async () => {
+    setLoadingProductos(true);
+    setErrorBackend('');
+    try {
+      const data = await getProductosApi();
+      setMedicamentos(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setErrorBackend(err.message || 'No se pudo conectar con el servidor de productos (puerto 8080).');
+    } finally {
+      setLoadingProductos(false);
+    }
+  }, []);
 
   useEffect(() => {
     setServicios(getServicios());
+    cargarProductos();
+  }, [cargarProductos]);
 
-    // Cargamos los productos reales desde Spring Boot / MySQL
-    getProductosApi()
-      .then(data => setMedicamentos(data))
-      .catch(() => setErrorBackend('No se pudo conectar con el servidor de productos (puerto 8080).'));
-  }, []);
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const resetForm = () => {
+    setForm(INITIAL_FORM);
+    setEditingId(null);
+  };
+
+  const handleEditClick = (producto) => {
+    setEditingId(producto.id);
+    setForm({
+      nombre: producto.nombre || '',
+      descripcion: producto.descripcion || '',
+      categoria: producto.categoria || '',
+      precio: producto.precio ?? '',
+      stock: producto.stock ?? '',
+      imagenUrl: producto.imagenUrl || ''
+    });
+    setFeedback({ type: '', text: '' });
+  };
+
+  const handleSaveProducto = async (e) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+
+    setSubmitting(true);
+    setFeedback({ type: '', text: '' });
+
+    const payload = {
+      nombre: form.nombre.trim(),
+      descripcion: form.descripcion.trim(),
+      categoria: form.categoria.trim(),
+      precio: Number(form.precio),
+      stock: Number(form.stock),
+      imagenUrl: form.imagenUrl.trim() || null
+    };
+
+    try {
+      if (editingId !== null) {
+        await actualizarProductoApi(editingId, payload);
+        setFeedback({ type: 'success', text: 'Producto actualizado correctamente en MySQL.' });
+      } else {
+        await crearProductoApi(payload);
+        setFeedback({ type: 'success', text: 'Producto creado correctamente en MySQL.' });
+      }
+      resetForm();
+      await cargarProductos();
+    } catch (err) {
+      setFeedback({ type: 'danger', text: err.message || 'Error al guardar el producto.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteProducto = async (producto) => {
+    if (!isAdmin) return;
+
+    const confirmed = window.confirm(`¿Eliminar el producto "${producto.nombre}"?`);
+    if (!confirmed) return;
+
+    setFeedback({ type: '', text: '' });
+    try {
+      await eliminarProductoApi(producto.id);
+      if (editingId === producto.id) {
+        resetForm();
+      }
+      setFeedback({ type: 'success', text: `Producto "${producto.nombre}" eliminado.` });
+      await cargarProductos();
+    } catch (err) {
+      setFeedback({ type: 'danger', text: err.message || 'No se pudo eliminar el producto.' });
+    }
+  };
 
   const filteredServicios = servicios.filter(s =>
     s.nombre.toLowerCase().includes(search.toLowerCase()) ||
@@ -84,9 +191,125 @@ const Catalogo = () => {
       {/* Vista de Medicamentos / Stock desde MySQL */}
       {tab === 'medicamentos' && (
         <div>
-          {errorBackend && <div className="alert alert-warning">{errorBackend}</div>}
+          {feedback.text && (
+            <div className={`alert alert-${feedback.type} alert-dismissible`} role="alert">
+              {feedback.text}
+            </div>
+          )}
 
-          {!errorBackend && filteredMedicamentos.length === 0 ? (
+          {errorBackend && (
+            <div className="alert alert-warning d-flex justify-content-between align-items-center">
+              <span>{errorBackend}</span>
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-dark ms-3"
+                onClick={cargarProductos}
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {/* Formulario CRUD visible únicamente para Administrador */}
+          {isAdmin && (
+            <div className="card shadow-sm mb-4 border-success">
+              <div className="card-header bg-success text-white fw-bold">
+                {editingId !== null ? `Editar producto #${editingId}` : 'Agregar nuevo producto al inventario'}
+              </div>
+              <div className="card-body">
+                <form onSubmit={handleSaveProducto} className="row g-3">
+                  <div className="col-md-4">
+                    <label className="form-label fw-bold">Nombre comercial *</label>
+                    <input
+                      type="text"
+                      name="nombre"
+                      className="form-control"
+                      value={form.nombre}
+                      onChange={handleFormChange}
+                      placeholder="Ej. Vacuna Antirrábica"
+                      required
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="form-label fw-bold">Categoría *</label>
+                    <input
+                      type="text"
+                      name="categoria"
+                      className="form-control"
+                      value={form.categoria}
+                      onChange={handleFormChange}
+                      placeholder="Ej. Vacunas / Antiparasitarios"
+                      required
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label fw-bold">Precio (CLP) *</label>
+                    <input
+                      type="number"
+                      name="precio"
+                      min="1"
+                      step="1"
+                      className="form-control"
+                      value={form.precio}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-2">
+                    <label className="form-label fw-bold">Stock *</label>
+                    <input
+                      type="number"
+                      name="stock"
+                      min="0"
+                      step="1"
+                      className="form-control"
+                      value={form.stock}
+                      onChange={handleFormChange}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-8">
+                    <label className="form-label fw-bold">Descripción</label>
+                    <input
+                      type="text"
+                      name="descripcion"
+                      className="form-control"
+                      value={form.descripcion}
+                      onChange={handleFormChange}
+                      placeholder="Detalle breve del medicamento o vacuna"
+                    />
+                  </div>
+                  <div className="col-md-4 d-flex align-items-end gap-2">
+                    <button
+                      type="submit"
+                      className="btn btn-success fw-bold flex-grow-1"
+                      disabled={submitting}
+                    >
+                      {submitting
+                        ? 'Guardando...'
+                        : editingId !== null
+                          ? 'Guardar cambios'
+                          : 'Crear producto'}
+                    </button>
+                    {editingId !== null && (
+                      <button
+                        type="button"
+                        className="btn btn-outline-secondary"
+                        onClick={resetForm}
+                        disabled={submitting}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {loadingProductos ? (
+            <div className="alert alert-secondary">Cargando inventario desde MySQL...</div>
+          ) : !errorBackend && filteredMedicamentos.length === 0 ? (
             <div className="alert alert-info">
               Conectado a MySQL correctamente, pero aún no hay productos registrados en la tabla <code>productos</code>.
             </div>
@@ -101,6 +324,7 @@ const Catalogo = () => {
                     <th>Categoría</th>
                     <th>Stock</th>
                     <th>Precio</th>
+                    {isAdmin && <th className="text-end">Acciones</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -116,6 +340,24 @@ const Catalogo = () => {
                         </span>
                       </td>
                       <td className="fw-bold">${Number(m.precio).toLocaleString('es-CL')} CLP</td>
+                      {isAdmin && (
+                        <td className="text-end text-nowrap">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary me-2"
+                            onClick={() => handleEditClick(m)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => handleDeleteProducto(m)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

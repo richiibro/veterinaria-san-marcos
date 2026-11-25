@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginApi } from '../services/api';
 
-const Login = ({ onLogin }) => {
+const Login = ({ onLogin, sessionNotice = '' }) => {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
@@ -17,17 +17,25 @@ const Login = ({ onLogin }) => {
 
     try {
       const data = await loginApi(email, pass);
+      const rolBackend = (data.rol || '').toString().trim().toUpperCase();
 
-      // Adaptamos el rol del backend al formato que espera tu frontend
+      // Adaptamos el rol del backend (ROLE_ADMIN, ROLE_CLIENTE, etc.) al frontend
       let rolFrontend = 'Dueño de mascota';
-      if (data.rol === 'ROLE_ADMIN' || data.email === 'admin@sanmarcos.cl') {
+      if (rolBackend === 'ROLE_ADMIN' || rolBackend === 'ADMIN' || data.email === 'admin@sanmarcos.cl') {
         rolFrontend = 'Administrador';
-      } else if (data.rol === 'ROLE_VETERINARIO') {
+      } else if (
+        rolBackend === 'ROLE_VETERINARIO' ||
+        rolBackend === 'VETERINARIO' ||
+        rolBackend === 'ROLE_RECEPCIONISTA' ||
+        rolBackend === 'RECEPCIONISTA'
+      ) {
         rolFrontend = 'Recepcionista';
+      } else if (rolBackend === 'ROLE_CLIENTE' || rolBackend === 'CLIENTE') {
+        rolFrontend = 'Dueño de mascota';
       }
 
       const usuarioAutenticado = {
-        nombre: data.nombre,
+        nombre: data.nombre || data.email,
         email: data.email,
         rol: rolFrontend,
         token: data.token
@@ -41,7 +49,7 @@ const Login = ({ onLogin }) => {
         navigate('/mis-citas');
       }
     } catch (err) {
-      setError('Credenciales incorrectas. Verifica que el backend esté encendido.');
+      setError(err.message || 'Credenciales incorrectas. Verifica que el backend esté encendido.');
     } finally {
       setLoading(false);
     }
@@ -59,6 +67,7 @@ const Login = ({ onLogin }) => {
         <div className="card shadow-sm p-4">
           <h3 className="card-title text-center text-success mb-3">Iniciar Sesión</h3>
 
+          {sessionNotice && <div className="alert alert-warning p-2">{sessionNotice}</div>}
           {error && <div className="alert alert-danger p-2">{error}</div>}
 
           <form onSubmit={handleSubmit}>
@@ -92,7 +101,7 @@ const Login = ({ onLogin }) => {
           <hr />
 
           <div className="bg-light p-3 rounded">
-            <p className="small text-muted mb-2 fw-bold">Usuario registrado en MySQL (clic para autocompletar):</p>
+            <p className="small text-muted mb-2 fw-bold">Usuarios de prueba (clic para autocompletar):</p>
             <div className="d-grid gap-2">
               <button
                 type="button"
@@ -100,6 +109,13 @@ const Login = ({ onLogin }) => {
                 onClick={() => fillCredentials('admin@sanmarcos.cl', '123456')}
               >
                 👑 Admin: <code>admin@sanmarcos.cl</code>
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline-secondary btn-sm text-start"
+                onClick={() => fillCredentials('cliente@sanmarcos.cl', '123456')}
+              >
+                🐾 Segundo rol (Cliente): <code>cliente@sanmarcos.cl</code>
               </button>
             </div>
           </div>
